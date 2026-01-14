@@ -2,6 +2,7 @@
 # Student A - Directory Monitoring Module (Commit 2 - Basic Scanning + Metadata)
 
 import os
+import time
 import stat
 import pwd
 import grp
@@ -21,6 +22,17 @@ def get_file_type(mode):
 
 def format_time(epoch_time):
     return datetime.fromtimestamp(epoch_time).strftime("%Y-%m-%d %H:%M:%S")
+
+def snapshot(directory):
+    files = {}
+    for item in os.listdir(directory):
+        item_path = os.path.join(directory, item)
+
+        if os.path.isfile(item_path) or os.path.isdir(item_path):
+            st = os.stat(item_path)
+            files[item] = (st.st_size, st.st_mtime, st.st_mode)
+
+    return files
 
 def extract_metadata(file_path):
     st = os.stat(file_path)
@@ -69,4 +81,29 @@ def scan_directory(directory):
             print("-------------------------\n")
 
 if __name__ == "__main__":
+    print(f"\n[INFO] Starting monitoring for: {MONITORED_DIR}\n")
+
+    if not os.path.exists(MONITORED_DIR):
+        print("[ERROR] Directory does not exist.")
+        exit()
+
+    prev = snapshot(MONITORED_DIR)
+
+    while True:
+    time.sleep(3)
+    curr = snapshot(MONITORED_DIR)
+
+    # (optional but recommended) show metadata periodically
     scan_directory(MONITORED_DIR)
+
+        created = set(curr.keys()) - set(prev.keys())
+        deleted = set(prev.keys()) - set(curr.keys())
+
+        for f in created:
+            print(f"[CREATED] {f}")
+
+        for f in deleted:
+            print(f"[DELETED] {f}")
+
+        prev = curr
+
