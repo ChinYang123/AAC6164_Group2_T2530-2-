@@ -8,9 +8,12 @@ import pwd
 import grp
 from datetime import datetime
 
+# Configuration
 MONITORED_DIR = "test_folder"
+POLL_INTERVAL = 3
 
 def get_file_type(mode):
+    """Helper to translate mode bits to human-readable file type."""
     if stat.S_ISREG(mode):
         return "regular file"
     elif stat.S_ISDIR(mode):
@@ -21,9 +24,15 @@ def get_file_type(mode):
         return "other"
 
 def format_time(epoch_time):
+    """Convert timestamp to readable string."""
     return datetime.fromtimestamp(epoch_time).strftime("%Y-%m-%d %H:%M:%S")
 
 def snapshot(directory):
+    """
+    Scans the directory and returns a state dictionary.
+    Key: Filename
+    Value: Tuple (Size, Modification Time, Mode/Permissions)
+    """
     files = {}
     if not os.path.exists(directory):
         return {}
@@ -31,9 +40,10 @@ def snapshot(directory):
     try:
         for item in os.listdir(directory):
             item_path = os.path.join(directory, item)
+            # Use lstat to correctly handle symbolic links
             if os.path.exists(item_path):
                 st = os.lstat(item_path)
-                # 关键：存储 (大小, 修改时间, 权限) 用于比对
+                # Store tuple: (size, mtime, mode) for comparison
                 files[item] = (st.st_size, st.st_mtime, st.st_mode)
     except Exception as e:
         print(f"[Error] Snapshot failed: {e}")
@@ -41,10 +51,13 @@ def snapshot(directory):
     return files
 
 def extract_metadata(file_path):
+    """
+    Extracts detailed metadata for Assignment Requirement A.iv.
+    Returns a dictionary or None if file missing.
+    """
     try:
         st = os.stat(file_path)
         file_name = os.path.basename(file_path)
-        file_type = get_file_type(st.st_mode)
         
         try:
             owner = pwd.getpwuid(st.st_uid).pw_name
@@ -53,54 +66,74 @@ def extract_metadata(file_path):
             owner = str(st.st_uid)
             group = str(st.st_gid)
             
-        permissions = stat.filemode(st.st_mode)
-        create_time = format_time(st.st_ctime)
-
         return {
             "filename": file_name,
-            "type": file_type,
+            "type": get_file_type(st.st_mode),
             "size": st.st_size,
             "owner": owner,
-            "permissions": permissions,
-            "created": create_time
+            "group": group,
+            "permissions": stat.filemode(st.st_mode),
+            "created": format_time(st.st_ctime),
+            "modified": format_time(st.st_mtime)
         }
     except FileNotFoundError:
         return None
 
 if __name__ == "__main__":
+    # Ensure directory exists
     if not os.path.exists(MONITORED_DIR):
         os.makedirs(MONITORED_DIR)
 
-    print(f"\n[INFO] Monitoring started for: {MONITORED_DIR}")
+    print(f"\n[INFO] Directory Monitor Running on: {MONITORED_DIR}")
+    print("[INFO] Press Ctrl+C to stop...\n")
+
+    # Initial snapshot
     prev = snapshot(MONITORED_DIR)
 
     try:
         while True:
-            time.sleep(3)
+            time.sleep(POLL_INTERVAL)
             curr = snapshot(MONITORED_DIR)
             timestamp = datetime.now().strftime("%H:%M:%S")
 
-            # 1. 新建 (Created)
+            # --- 1. DETECT CREATION ---
             created = set(curr.keys()) - set(prev.keys())
             for f in created:
                 print(f"[{timestamp}] [CREATED] {f}")
+                # Log metadata for new files (Requirement A.iv)
                 meta = extract_metadata(os.path.join(MONITORED_DIR, f))
                 if meta:
-                    print(f"   Type: {meta['type']}, Size: {meta['size']} bytes, Owner: {meta['owner']}")
+                    print(f"   Details: {meta['type']}, {meta['size']} bytes, Owner: {meta['owner']}")
 
-            # 2. 删除 (Deleted)
+            # --- 2. DETECT DELETION ---
             deleted = set(prev.keys()) - set(curr.keys())
             for f in deleted:
                 print(f"[{timestamp}] [DELETED] {f}")
 
-            # 3. 修改 (Modified) - 本次提交新增的核心功能
+            # --- 3. DETECT MODIFICATION (With Old vs New Values) ---
             common_files = set(prev.keys()) & set(curr.keys())
             for f in common_files:
-                # 对比旧快照和新快照的信息是否一致
+                # If the tuple (size, time, mode) has changed
                 if prev[f] != curr[f]:
                     print(f"[{timestamp}] [MODIFIED] {f}")
-                    # 这里暂时只提示修改，具体改了什么下个版本再细化
+                    
+                    # Unpack tuple to compare specific fields
+                    old_size, old_time, old_mode = prev[f]
+                    new_size, new_time, new_mode = curr[f]
+                    
+                    # Check Size
+                    if old_size != new_size:
+                        print(f"   -> Size change: {old_size} bytes -> {new_size} bytes")
+                    
+                    # Check Time
+                    if old_time != new_time:
+                        print(f"   -> Modified at: {format_time(new_time)}")
+                        
+                    # Check Permissions
+                    if old_mode != new_mode:
+                        print(f"   -> Permissions changed")
 
+            # Update state for next loop
             prev = curr
             
     except KeyboardInterrupt:
