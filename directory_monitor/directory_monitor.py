@@ -6,88 +6,65 @@ import time
 import stat
 import pwd
 import grp
+import csv  
 from datetime import datetime
 
 # Configuration
 MONITORED_DIR = "test_folder"
 POLL_INTERVAL = 3
+CSV_FILE = "file_monitor_log.csv"
+
+if not os.path.exists(CSV_FILE):
+    with open(CSV_FILE, mode='w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["timestamp", "event_type", "filename", "details"])
+
+def log_to_csv(event_type, filename, details):
+    with open(CSV_FILE, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        writer.writerow([timestamp, event_type, filename, details])
 
 def get_file_type(mode):
-    """Helper to translate mode bits to human-readable file type."""
-    if stat.S_ISREG(mode):
-        return "regular file"
-    elif stat.S_ISDIR(mode):
-        return "directory"
-    elif stat.S_ISLNK(mode):
-        return "symbolic link"
-    else:
-        return "other"
+    if stat.S_ISREG(mode): return "regular file"
+    elif stat.S_ISDIR(mode): return "directory"
+    elif stat.S_ISLNK(mode): return "symbolic link"
+    else: return "other"
 
 def format_time(epoch_time):
-    """Convert timestamp to readable string."""
     return datetime.fromtimestamp(epoch_time).strftime("%Y-%m-%d %H:%M:%S")
 
 def snapshot(directory):
-    """
-    Scans the directory and returns a state dictionary.
-    Key: Filename
-    Value: Tuple (Size, Modification Time, Mode/Permissions)
-    """
     files = {}
-    if not os.path.exists(directory):
-        return {}
-        
+    if not os.path.exists(directory): return {}
     try:
         for item in os.listdir(directory):
             item_path = os.path.join(directory, item)
-            # Use lstat to correctly handle symbolic links
             if os.path.exists(item_path):
                 st = os.lstat(item_path)
-                # Store tuple: (size, mtime, mode) for comparison
                 files[item] = (st.st_size, st.st_mtime, st.st_mode)
-    except Exception as e:
-        print(f"[Error] Snapshot failed: {e}")
-        
+    except Exception:
+        pass
     return files
 
 def extract_metadata(file_path):
-    """
-    Extracts detailed metadata for Assignment Requirement A.iv.
-    Returns a dictionary or None if file missing.
-    """
     try:
         st = os.stat(file_path)
-        file_name = os.path.basename(file_path)
-        
-        try:
-            owner = pwd.getpwuid(st.st_uid).pw_name
-            group = grp.getgrgid(st.st_gid).gr_name
-        except KeyError:
-            owner = str(st.st_uid)
-            group = str(st.st_gid)
-            
         return {
-            "filename": file_name,
             "type": get_file_type(st.st_mode),
             "size": st.st_size,
-            "owner": owner,
-            "group": group,
-            "permissions": stat.filemode(st.st_mode),
-            "created": format_time(st.st_ctime),
-            "modified": format_time(st.st_mtime)
+            "owner": pwd.getpwuid(st.st_uid).pw_name
         }
-    except FileNotFoundError:
+    except:
         return None
 
 if __name__ == "__main__":
-    # Ensure directory exists
-    if not os.path.exists(MONITORED_DIR):
-        os.makedirs(MONITORED_DIR)
+    if not os.path.exists(MONITORED_DIR): os.makedirs(MONITORED_DIR)
 
-    print(f"\n[INFO] Directory Monitor Running on: {MONITORED_DIR}")
+    print(f"\n[INFO] Monitoring: {MONITORED_DIR}")
+    print(f"[INFO] Logging to: {CSV_FILE}") 
     print("[INFO] Press Ctrl+C to stop...\n")
 
-    # Initial snapshot
     prev = snapshot(MONITORED_DIR)
 
     try:
@@ -96,45 +73,44 @@ if __name__ == "__main__":
             curr = snapshot(MONITORED_DIR)
             timestamp = datetime.now().strftime("%H:%M:%S")
 
-            # --- 1. DETECT CREATION ---
+            # 1. CREATED
             created = set(curr.keys()) - set(prev.keys())
             for f in created:
                 print(f"[{timestamp}] [CREATED] {f}")
-                # Log metadata for new files (Requirement A.iv)
                 meta = extract_metadata(os.path.join(MONITORED_DIR, f))
-                if meta:
-                    print(f"   Details: {meta['type']}, {meta['size']} bytes, Owner: {meta['owner']}")
+                details = f"Type: {meta['type']}, Size: {meta['size']}" if meta else "N/A"
+                # --- 写入 CSV ---
+                log_to_csv("CREATED", f, details)
 
-            # --- 2. DETECT DELETION ---
+            # 2. DELETED
             deleted = set(prev.keys()) - set(curr.keys())
             for f in deleted:
                 print(f"[{timestamp}] [DELETED] {f}")
+                log_to_csv("DELETED", f, "File removed")
 
-            # --- 3. DETECT MODIFICATION (With Old vs New Values) ---
-            common_files = set(prev.keys()) & set(curr.keys())
-            for f in common_files:
-                # If the tuple (size, time, mode) has changed
+            # 3. MODIFIED
+            common = set(prev.keys()) & set(curr.keys())
+            for f in common:
                 if prev[f] != curr[f]:
                     print(f"[{timestamp}] [MODIFIED] {f}")
                     
-                    # Unpack tuple to compare specific fields
                     old_size, old_time, old_mode = prev[f]
                     new_size, new_time, new_mode = curr[f]
                     
-                    # Check Size
+                    details = ""
                     if old_size != new_size:
-                        print(f"   -> Size change: {old_size} bytes -> {new_size} bytes")
+                        details = f"Size: {old_size}->{new_size}"
+                        print(f"   -> {details}")
+                    elif old_mode != new_mode:
+                        details = "Permissions changed"
+                        print(f"   -> {details}")
+                    else:
+                        details = "Content/Time updated"
+                        print(f"   -> {details}")
                     
-                    # Check Time
-                    if old_time != new_time:
-                        print(f"   -> Modified at: {format_time(new_time)}")
-                        
-                    # Check Permissions
-                    if old_mode != new_mode:
-                        print(f"   -> Permissions changed")
+                    log_to_csv("MODIFIED", f, details)
 
-            # Update state for next loop
             prev = curr
-            
+
     except KeyboardInterrupt:
-        print("\n[INFO] Monitoring stopped.")
+        print("\n[INFO] Stopped.")
