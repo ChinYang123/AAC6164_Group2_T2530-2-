@@ -23,7 +23,7 @@ def get_report():
 
 def get_report():
     time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-<<<<<<< HEAD
+
 
     # --- i. CPU Metrics ---
     cpu_pct = psutil.cpu_percent(interval=1)
@@ -38,16 +38,16 @@ def get_report():
     d_total, d_used, d_free = disk.total/(1024**3), disk.used/(1024**3), disk.free/(1024**3)
 
     # --- iv. System Uptime & Idle Time ---
->>>>>>> 42e410159ce9a7c26b5edb8ccc3d7d96e1fa70de
+
     boot_time = psutil.boot_time()
     uptime = datetime.datetime.now() - datetime.datetime.fromtimestamp(boot_time)
     idle_seconds = psutil.cpu_times().idle
     idle_str = str(datetime.timedelta(seconds=int(idle_seconds)))
 
-<<<<<<< HEAD
+
 =======
     # --- v. Active Processes Statistics ---
->>>>>>> 42e410159ce9a7c26b5edb8ccc3d7d96e1fa70de
+
     all_pids = psutil.pids()
     running_cnt = 0
     sleeping_cnt = 0
@@ -58,7 +58,7 @@ def get_report():
             elif status == psutil.STATUS_SLEEPING: sleeping_cnt += 1
         except (psutil.NoSuchProcess, psutil.AccessDenied): continue
 
-<<<<<<< HEAD
+
     top_cpu = sorted(psutil.process_iter(['name', 'cpu_percent']), key=lambda x: x.info['cpu_percent'], reverse=True)[:3]
     top_mem = sorted(psutil.process_iter(['name', 'memory_percent']), key=lambda x: x.info['memory_percent'], reverse=True)[:3]
 
@@ -116,32 +116,30 @@ def save_to_csv(data_row, filename="logs/performance_report.csv"):
     report += f"   - Top 3 by Memory: {', '.join([p.info['name'] for p in top_mem])}\n"
 
 =======
-    
+
     cpu = psutil.cpu_percent(interval=1)
     mem = psutil.virtual_memory().percent
     disk = psutil.disk_usage('/').percent
-    
+
     load_1, load_5, load_15 = psutil.getloadavg()
-    
+
     boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
     uptime = datetime.datetime.now() - boot_time
-    
+
     process_count = len(psutil.pids())
-    
+
     report = f"--- System Status Report {time_str} ---\n"
     report += f"Uptime: {str(uptime).split('.')[0]}\n"
     report += f"Load Average: {load_1}, {load_5}, {load_15}\n"
     report += f"Total Processes: {process_count}\n"
     report += f"CPU: {cpu}% | Mem: {mem}% | Disk: {disk}%\n"
-    
->>>>>>> 67666c9c71d4fa9ec9ee53f389048aaa0011e835
+
     return report
->>>>>>> 42e410159ce9a7c26b5edb8ccc3d7d96e1fa70de
 
 if __name__ == "__main__":
     try:
         while True:
-<<<<<<< HEAD
+
             display_info, csv_data = get_report()
 
             print (display_info)
@@ -158,4 +156,3 @@ if __name__ == "__main__":
             time.sleep(10) 
     except KeyboardInterrupt:
         print("\nMonitoring stopped.")
->>>>>>> 42e410159ce9a7c26b5edb8ccc3d7d96e1fa70de
