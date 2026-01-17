@@ -7,7 +7,7 @@ import csv
 def get_report():
     now_dt = datetime.datetime.now()
     time_display = now_dt.strftime("%Y-%m-%d %H:%M:%S")
-    time_csv = now_dt.strftime("%Y-%m-%d %H:%M") 
+    time_csv = now_dt.strftime("%Y-%m-%d %H:%M")
 
     cpu_pct = psutil.cpu_percent(interval=1)
     load_1, load_5, load_15 = psutil.getloadavg()
