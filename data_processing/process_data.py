@@ -18,5 +18,16 @@ plt.ylabel("CPU Usage (%)")
 plt.title("CPU Usage Over Time")
 plt.savefig("cpu_usage.png")
 plt.close()
+# Write report
+with open("final_report.txt", "w") as f:
+    f.write("System Monitoring Summary\n")
+    f.write("-------------------------\n")
+    f.write(f"Average CPU Usage: {avg_cpu:.2f}%\n")
+    f.write(f"Maximum CPU Usage: {max_cpu:.2f}%\n\n")
+    f.write("Directory Activity Summary\n")
+    f.write("--------------------------\n")
+    f.write(f"Files Created: {created}\n")
+    f.write(f"Files Modified: {modified}\n")
+    f.write(f"Files Deleted: {deleted}\n")
 
 print("C module executed successfully")

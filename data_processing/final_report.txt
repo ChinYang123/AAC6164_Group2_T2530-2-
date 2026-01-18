@@ -1,0 +1,10 @@
+System Monitoring Summary
+-------------------------
+Average CPU Usage: 61.76%
+Maximum CPU Usage: 100.00%
+
+Directory Activity Summary
+--------------------------
+Files Created: 0
+Files Modified: 0
+Files Deleted: 0
