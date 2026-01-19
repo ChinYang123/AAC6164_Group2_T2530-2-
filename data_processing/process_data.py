@@ -19,6 +19,8 @@ plt.plot(sys_df["timestamp"], sys_df["cpu_percent"])
 plt.xlabel("Time")
 plt.ylabel("CPU Usage (%)")
 plt.title("CPU Usage Over Time")
+plt.xticks(rotation=45)
+plt.tight_layout()
 plt.savefig("cpu_usage.png")
 plt.close()
 
