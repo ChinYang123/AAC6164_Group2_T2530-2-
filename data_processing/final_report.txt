@@ -1,10 +1,19 @@
 System Monitoring Summary
--------------------------
+=========================
+
+CPU Statistics
+----------------
+Minimum CPU Usage: 0.00%
 Average CPU Usage: 61.76%
 Maximum CPU Usage: 100.00%
 
+Memory Statistics
+------------------
+Average Memory Usage: 28.81%
+Maximum Memory Usage: 28.90%
+
 Directory Activity Summary
---------------------------
-Files Created: 0
-Files Modified: 0
-Files Deleted: 0
+---------------------------
+Files Created: 5
+Files Modified: 10
+Files Deleted: 3
